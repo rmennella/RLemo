@@ -1,4 +1,4 @@
-function [stimulus_rand,response,tstimcheck] = EmoReinf_Run_Experiment(sid,stimulus_rand, prob_reward, task, isRobot)
+function [stimulus_rand,response,tstimcheck] = EmoReinf_Run_Experiment(sid,stimulus_rand, prob_reward, task, isRobot, physio)
 % Fonction permettant de faire lancer l'experience
 % Arguments d'entrée :
 % sid = numéro du participant
@@ -6,7 +6,7 @@ function [stimulus_rand,response,tstimcheck] = EmoReinf_Run_Experiment(sid,stimu
 % the probability of reward associated with the good response
 % is this a task (1) or a training (0) session?
 % do you want a robot to respond for you? (yes = 1, no = 0)
-
+% do you want to record physio? (yes = 1, no = 0)
 
 % Arguments de sortie :
 % stimulus = matrice des stimuli utilisés dans la fonction
@@ -74,6 +74,32 @@ if isRobot
     
     %Create a Robot-object to do the key-pressing
     rob=Robot;
+end
+
+% Is this a  session with physiological recordings?
+if physio
+    
+    %Open Serial Port
+    s1 = serial('COM5', 'BaudRate', 115200,'DataBits', 8, 'StopBits', 1, 'FlowControl', 'none', 'Parity', 'none', 'Terminator', 'CR', 'Timeout', 400, 'InputBufferSize', 16000);
+    fopen(s1);
+    
+    % Initialize markers
+    
+    % general markers
+    m_startInstruction = 10;
+    m_pause            = 20;
+    m_endExperiment    = 30;
+    
+    % specific markers
+    m_greyscreen = 1;
+    m_fixation   = 2;
+    m_scene      = 3;
+    m_respCorr   = 4;
+    m_respUncorr = 5;
+    
+    m_approach   = 6;
+    m_avoidance  = 7;
+    m_miss       = 8;
 end
 
 
@@ -175,6 +201,12 @@ try
     
     Screen('DrawingFinished',video.h);
     Screen('Flip',video.h,t+roundfr(1.000+0.250*rand));
+    
+    if physio % if this a  session with physiological recording
+        % send marker for start istruction
+        fprintf(s1,['mh',m_startInstruction]);
+    end
+    
     
     % wait for the subject to press a button to go to the 2nd page
     WaitKeyPress(keywait);
@@ -333,6 +365,11 @@ try
         
         tstart_greyscreen = Screen('Flip',video.h, [], [1]); % flip greyscreen
         
+        if physio % if this a  session with physiological recording
+            % send marker for start grey screen
+            fprintf(s1,['mh',m_greyscreen]);
+        end
+        
         % ------------------------------------------------------------------------------------------------%
         %                                 LOAD GREY SCREEN + FIXATION
         % ------------------------------------------------------------------------------------------------%
@@ -355,6 +392,11 @@ try
         
         tstartCross = Screen('Flip',video.h, [], [1]); %affichage grey+cross
         tstimcheck(istim).greyscreen = tstartCross - tstart_greyscreen; % temps exact de l'affichage de la croix
+        
+        if physio % if this a  session with physiological recording
+            % send marker for start fixation
+            fprintf(s1,['mh',m_fixation]);
+        end
         
         
         % ------------------------------------------------------------------------------------------------%
@@ -382,6 +424,11 @@ try
         
         % flip the neutral images
         tstartScene = Screen('Flip',video.h, [], 1);
+        
+        if physio % if this a  session with physiological recording
+            % send marker for start scene
+            fprintf(s1,['mh',m_scene]);
+        end
         
         isPressed =0; % enregistrement des touches
         response(istim).iscor = 0;
@@ -419,6 +466,19 @@ try
                 response(istim).timeResponse = timeResp - tstartScene;
                 response(istim).resp = buttonPressed;
                 isPressed = 1;
+                
+                if physio % if this a  session with physiological recording
+                    
+                    if response(istim).resp == stimulus(istim).goodButton
+                        
+                        % send marker for correct response
+                        fprintf(s1,['mh',m_respCorr]);
+                        
+                    else
+                        % send marker for correct response
+                        fprintf(s1,['mh',m_respUncorr]);
+                    end
+                end
                 
                 
                 if response(istim).simulbutton == 1
@@ -528,11 +588,28 @@ try
             if task
                 response(istim).reward = response(istim).resp ~= response(istim).side_emo;
                 response(istim).hits = response(istim).resp == stimulus(istim).goodButton;
+                
+                if physio % if this a  session with physiological recording
+                    
+                    if response(istim).reward
+                        % send marker for avoidance (rewarded) response
+                        fprintf(s1,['mh',m_avoidance]);
+                    else
+                        % send marker for m_approach (punished) response
+                        fprintf(s1,['mh',m_approach]);
+                    end
+                end
+                
             else
                 response(istim).reward = 0;
                 response(istim).hits   = 0;
             end
         else
+            
+            if physio % if this a  session with physiological recording
+                % send marker for missed response
+                fprintf(s1,['mh',m_miss]);
+            end
             
             response(istim).iscor = 0;
             response(istim).resp = 0;
@@ -593,6 +670,11 @@ try
                 Screen('DrawText',video.h,pause_msg,label_pause_msg(1),label_pause_msg(2),1);
                 Screen('Flip', video.h);
                 
+                if physio % if this a  session with physiological recording
+                    % send marker for pause
+                    fprintf(s1,['mh',m_pause]);
+                end
+                
                 if ~isRobot
                     WaitKeyPress(keywait);
                 end
@@ -603,6 +685,14 @@ try
         
         
         if aborted
+            if physio % if this a  session with physiological recording
+                % send marker for end Experiment
+                fprintf(s1,['mh',m_endExperiment]);
+                
+                %close the parallel port
+                fclose(s1);
+            end
+            
             Priority(0);
             Screen('CloseAll');
             FlushEvents;
@@ -613,6 +703,13 @@ try
         
     end
     
+    if physio % if this a  session with physiological recording
+        % send marker for end Experiment
+        fprintf(s1,['mh',m_endExperiment]);
+        
+        %close the parallel port
+        fclose(s1);
+    end
     
     Priority(0);
     Screen('CloseAll');
@@ -621,6 +718,15 @@ try
     ShowCursor;
     
 catch
+    
+    if physio % if this a  session with physiological recording
+        % send marker for end Experiment
+        fprintf(s1,['mh',m_endExperiment]);
+        
+        %close the parallel port
+        fclose(s1);
+    end
+    
     Priority(0);
     Screen('CloseAll');
     FlushEvents;

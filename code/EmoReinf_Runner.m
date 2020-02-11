@@ -70,12 +70,12 @@ else
     % reload the last good block, and run. Otherwise, you can simply click again Run and it will continue
     % from the next one
    
-    isRobot = 0;
+    isRobot     = 0;
     prob_reward = 0.8;
-    
+    physio      = 0; % do you want to record physiological signals?
     
     % run experiment
-    [stimulus,response,tstimcheck] = EmoReinf_Run_Experiment(sid,stimulus, prob_reward, task, isRobot);
+    [stimulus,response,tstimcheck] = EmoReinf_Run_Experiment(sid,stimulus, prob_reward, task, isRobot, physio);
     % save data at each block, including present block number)
     filename = sprintf('../data/EmoReinf_%s_%s.mat',participant.identifier,participant.date);
     save(filename, 'response', 'stimulus', 'tstimcheck', 'prob_reward')
