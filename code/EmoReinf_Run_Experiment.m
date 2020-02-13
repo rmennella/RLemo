@@ -80,26 +80,27 @@ end
 if physio
     
     %Open Serial Port
-    s1 = serial('COM5', 'BaudRate', 115200,'DataBits', 8, 'StopBits', 1, 'FlowControl', 'none', 'Parity', 'none', 'Terminator', 'CR', 'Timeout', 400, 'InputBufferSize', 16000);
+    s1 = serial('COM4', 'BaudRate', 115200,'DataBits', 8, 'StopBits', 1, 'FlowControl', 'none', 'Parity', 'none', 'Terminator', 'CR', 'Timeout', 400, 'InputBufferSize', 16000);
     fopen(s1);
     
     % Initialize markers
     
     % general markers
-    m_startInstruction = 10;
-    m_pause            = 20;
-    m_endExperiment    = 30;
+    m_startInstruction = 20;
+    m_pause            = 30;
+    m_endExperiment    = 40;
     
     % specific markers
     m_greyscreen = 1;
     m_fixation   = 2;
     m_scene      = 3;
-    m_respCorr   = 4;
-    m_respUncorr = 5;
+    m_scrumble   = 4;
+    m_respCorr   = 5;
+    m_respUncorr = 6;
     
-    m_approach   = 6;
-    m_avoidance  = 7;
-    m_miss       = 8;
+    m_approach   = 7;
+    m_avoidance  = 8;
+    m_miss       = 9;
 end
 
 
@@ -563,6 +564,10 @@ try
                 
                 % affichage scene with scrumble, new emotion and ID participant
                 t_scrumble = Screen('Flip',video.h);
+                if physio % if this a  session with physiological recording
+                    % send marker for scrumble
+                    fprintf(s1,['mh',m_scrumble]);
+                end
             end
         end
         
@@ -584,7 +589,7 @@ try
             
             % affichage scene with only new emotion and ID participant
             t_feedback = Screen('Flip',video.h, t_scrumble + scrumble_time); %affichage scene with new emotion and ID participant
-            t_endFeedack = WaitSecs(FB_time);
+            
             if task
                 response(istim).reward = response(istim).resp ~= response(istim).side_emo;
                 response(istim).hits = response(istim).resp == stimulus(istim).goodButton;
@@ -604,6 +609,9 @@ try
                 response(istim).reward = 0;
                 response(istim).hits   = 0;
             end
+            
+            t_endFeedack = WaitSecs(FB_time - (GetSecs- t_feedback));
+            
         else
             
             if physio % if this a  session with physiological recording

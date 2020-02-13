@@ -72,7 +72,7 @@ else
    
     isRobot     = 0;
     prob_reward = 0.8;
-    physio      = 0; % do you want to record physiological signals?
+    physio      = 1; % do you want to record physiological signals?
     
     % run experiment
     [stimulus,response,tstimcheck] = EmoReinf_Run_Experiment(sid,stimulus, prob_reward, task, isRobot, physio);
